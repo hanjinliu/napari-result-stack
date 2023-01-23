@@ -1,0 +1,21 @@
+name: napari-result-stack
+display_name: Result stack
+contributions:
+  commands:
+    - id: napari-result-stack.make_qwidget
+      python_name: napari_result_stack._widget:ExampleQWidget
+      title: Make example QWidget
+    - id: napari-result-stack.make_magic_widget
+      python_name: napari_result_stack._widget:example_magic_widget
+      title: Make example magic widget
+    - id: napari-result-stack.make_func_widget
+      python_name: napari_result_stack._widget:example_function_widget
+      title: Make example function widget
+  widgets:
+    - command: napari-result-stack.make_qwidget
+      display_name: Example QWidget
+    - command: napari-result-stack.make_magic_widget
+      display_name: Example Magic Widget
+    - command: napari-result-stack.make_func_widget
+      autogenerate: true
+      display_name: Example Function Widget
