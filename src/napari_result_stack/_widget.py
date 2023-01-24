@@ -81,15 +81,15 @@ class QResultStackItem(QtW.QFrame):
         font.setBold(True)
         font.setPointSize(font.pointSize() + 1)
         self._label.setFont(font)
-        self._label.setFixedWidth(60)
+        self._label.setFixedWidth(30)
 
         # setup type label
         label = f"<font color='lime' family='monospace'>{typ.__name__}</font>"
         self._type_label = QtW.QLabel(label, self)
         self._type_label.setToolTip(f"{typ.__module__}.{typ.__name__}")
-        self._type_label.setFixedWidth(120)
+        self._type_label.setFixedWidth(60)
 
         _layout.addWidget(self._label)
         _layout.addWidget(self._type_label)
         _layout.addWidget(widget)
-        self.setMaximumHeight(240)
+        self.setMaximumHeight(120)

@@ -135,10 +135,12 @@ def _format_value(val, dtype: np.dtype):
     return _DEFAULT_FORMATTERS.get(dtype.kind, str)(val)
 
 
+# TODO: copy
 class QDataFrameView(QtW.QTableView):
     def __init__(self, df: _DataFrame) -> None:
         super().__init__()
         self.setModel(QDataFrameModel(df))
+        self.resizeRowsToContents()
 
     if TYPE_CHECKING:
 
