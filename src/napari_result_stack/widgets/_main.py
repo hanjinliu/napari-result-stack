@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from magicgui.widgets import ComboBox
+from qtpy import QtGui
 from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
@@ -55,6 +56,8 @@ class QResultViewer(QtW.QWidget):
 
         # header
         _label = QtW.QLabel("Type:")
+        width = QtGui.QFontMetrics(_label.font()).width("Type:") + 8
+        _label.setFixedWidth(width)
         _header = QtW.QWidget()
 
         _header_layout = QtW.QHBoxLayout()

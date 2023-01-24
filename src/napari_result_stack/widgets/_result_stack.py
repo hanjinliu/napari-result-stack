@@ -50,7 +50,7 @@ class QResultStack(QtW.QWidget):
 
     def on_variable_added(self, label: Any, val: Any) -> None:
         qwidget = self._factories.create_widget(val)
-        frame = QResultStackItem(str(label), qwidget, type(val))
+        frame = QResultStackItem(str(label), qwidget, type(val), self)
         self._inner_layout.addWidget(frame)
         return None
 
@@ -68,31 +68,35 @@ class QResultStack(QtW.QWidget):
 
 
 class QResultStackItem(QtW.QGroupBox):
-    def __init__(self, label: str, widget: QtW.QWidget, typ: type) -> None:
-        super().__init__()
-        _layout = QtW.QHBoxLayout()
+    def __init__(
+        self, label: str, widget: QtW.QWidget, typ: type, parent: QResultStack
+    ):
+        super().__init__(parent)
+        if isinstance(widget, QtW.QLabel):
+            # simple types
+            _layout = QtW.QHBoxLayout()
+        else:
+            _layout = QtW.QVBoxLayout()
         self.setLayout(_layout)
         _layout.setContentsMargins(0, 0, 0, 0)
         _layout.setSpacing(2)
 
         # setup label
-        self._label = _label_widget(label, self)
+        _s = "&nbsp;"
+
+        label = f"{_s}({label}){_s * 2}"
+        label_text = (
+            f"{_colored(label, 'gray')}{_colored(typ.__name__, 'lime')}"
+        )
+
+        self._label = _label_widget(label_text, self)
         font = self._label.font()
         font.setBold(True)
-        font.setPointSize(font.pointSize() + 1)
         self._label.setFont(font)
-        self._label.setFixedWidth(30)
-
-        # setup type label
-        type_label = (
-            f"<font color='lime' family='monospace'>{typ.__name__}</font>"
-        )
-        self._type_label = _label_widget(type_label, self)
-        self._type_label.setToolTip(f"{typ.__module__}.{typ.__name__}")
-        self._type_label.setFixedWidth(60)
+        self._label.setFixedWidth(90)
+        self._label.setToolTip(f"{typ.__module__}.{typ.__name__}")
 
         _layout.addWidget(self._label)
-        _layout.addWidget(self._type_label)
         _layout.addWidget(widget)
 
         self.setMaximumHeight(max(widget.minimumHeight() + 16, 120))
@@ -100,9 +104,15 @@ class QResultStackItem(QtW.QGroupBox):
 
 def _label_widget(text: str, parent: QtW.QWidget) -> QtW.QLabel:
     wdt = QtW.QLabel(text, parent)
-    wdt.setAlignment(Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignTop)
+    wdt.setAlignment(
+        Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+    )
     wdt.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     wdt.setSizePolicy(
         QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding
     )
     return wdt
+
+
+def _colored(text: str, color: str):
+    return f"<font color={color!r} family='monospace'>{text}</font>"

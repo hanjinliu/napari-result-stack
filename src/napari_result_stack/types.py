@@ -61,8 +61,9 @@ class StoredValueComboBox(ComboBox):
 
     def reset_choices(self, *_: Any):
         super().reset_choices(*_)
-        if choices := self.choices:
-            self.value = choices[-1]  # select last
+        qcombobox: QComboBox = self.native
+        if qcombobox.count() > 0:
+            qcombobox.setCurrentIndex(qcombobox.count() - 1)
 
 
 class _StoredLastAlias(type):
@@ -89,7 +90,7 @@ class _StoredLastAlias(type):
         ]
 
 
-class StoredLast(Generic[_T], metaclass=_StoredLastAlias):
+class _StoredLast(Generic[_T], metaclass=_StoredLastAlias):
     def __new__(cls, *args, **kwargs):
         raise TypeError("Type StoredLast cannot be instantiated.")
 
@@ -192,7 +193,7 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     _maxsize: int
     _hash_value: Hashable
     _widget_ref: weakref.ReferenceType[QResultStack]
-    Last = StoredLast
+    Last = _StoredLast
     _no_spec = DefaultSpec()
 
     __args__: tuple[type] = ()
