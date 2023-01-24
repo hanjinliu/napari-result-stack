@@ -14,21 +14,9 @@ class QResultViewer(QtW.QWidget):
 
     def __init__(self, parent: QtW.QWidget | None = None):
         super().__init__(parent)
-        _layout = QtW.QVBoxLayout()
-        _layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-        self.setLayout(_layout)
-
-        self._combobox = ComboBox(
-            choices=_StoredMeta._get_choices_for_combobox
-        )
-        self._combobox.native.setFont(QtGui.QFont(monospace()))
-        self._stack_widget = QtW.QStackedWidget()
-        _layout.addWidget(self._combobox.native)
-        self._combobox.changed.connect(self._on_combobox_changed)
-
-        self._layout = _layout
+        self._setup_ui()
         self._widget = None
-        self._combobox.reset_choices()
+        # self._combobox.reset_choices()
         if (stored := self._combobox.value) is not None:
             self._on_combobox_changed(stored)
 
@@ -46,8 +34,35 @@ class QResultViewer(QtW.QWidget):
     def setWidget(self, wdt: QtW.QWidget):
         if self._widget is not None:
             self._layout.removeWidget(self._widget)
+        self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self._layout.addWidget(wdt)
         self._widget = wdt
 
     def _on_combobox_changed(self, stored: _StoredMeta):
         self.setWidget(stored.get_widget())
+
+    def _setup_ui(self):
+        _layout = self._layout = QtW.QVBoxLayout()
+        _layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        self.setLayout(_layout)
+
+        self._combobox = ComboBox(
+            choices=_StoredMeta._get_choices_for_combobox
+        )
+        self._combobox.native.setFont(QtGui.QFont(monospace()))
+        self._stack_widget = QtW.QStackedWidget()
+        _layout.addWidget(self._combobox.native)
+        self._combobox.changed.connect(self._on_combobox_changed)
+
+        # header
+        _label = QtW.QLabel("Type:")
+        _header = QtW.QWidget()
+
+        _header_layout = QtW.QHBoxLayout()
+        _header_layout.setContentsMargins(0, 0, 0, 0)
+        _header_layout.addWidget(_label)
+        _header_layout.addWidget(self._combobox.native)
+
+        _header.setLayout(_header_layout)
+
+        _layout.addWidget(_header)

@@ -141,6 +141,10 @@ class QDataFrameView(QtW.QTableView):
         super().__init__()
         self.setModel(QDataFrameModel(df))
         self.resizeRowsToContents()
+        self.setMinimumHeight(120)
+        self.setVerticalScrollMode(
+            QtW.QAbstractItemView.ScrollMode.ScrollPerPixel
+        )
 
     if TYPE_CHECKING:
 
