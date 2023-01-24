@@ -56,3 +56,8 @@ class QDictView(QtW.QTableView):
         self.horizontalHeader().hide()
         self.resizeRowsToContents()
         self.horizontalHeader().resizeSection(0, 1000)
+
+        self.setMinimumHeight(120)
+        self.setVerticalScrollMode(
+            QtW.QAbstractItemView.ScrollMode.ScrollPerPixel
+        )

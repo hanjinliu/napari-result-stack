@@ -83,35 +83,47 @@ class _StoredMeta(type, Generic[_T]):
     def __getitem__(cls, value):
         return Stored._class_getitem(value)
 
-    def hash_key(cls) -> tuple[type[_T], Hashable]:
-        return cls.__args__[0], cls._hash_value
-
     def __repr__(cls: _StoredMeta) -> str:
         return cls.__name__
 
     def length(self) -> int:
+        """The number of the storage."""
         return len(self._store)
 
-    def count(self) -> int:
-        return self._count
+    def clear(cls):
+        """Clear the storage."""
+        return cls._store.clear()
 
-    def widget(self) -> QResultStack | None:
+    def pop(cls, index: int = -1) -> StoredValue[_T]:
+        """Pop the item at given index from the storage."""
+        return cls._store.pop(index)
+
+    def value(cls, index: int = -1) -> _T:
+        """Get the value at given index from the storage."""
+        return cls._store[index].value
+
+    def get_widget(cls) -> QResultStack:
+        """Get the widget for this storage type. Create if not exists."""
+        if (listview := cls._widget()) is None:
+            listview = cls._create_widget()
+        return listview
+
+    def _hash_key(cls) -> tuple[type[_T], Hashable]:
+        return cls.__args__[0], cls._hash_value
+
+    def _widget(self) -> QResultStack | None:
+        """Return the widget for this storage type if exists."""
         if self._widget_ref is None:
             return None
         return self._widget_ref()
 
-    def clear(cls):
-        cls._store.clear()
+    def _create_widget(cls):
+        from napari_result_stack.widgets import QResultStack
 
-    def get_widget(cls) -> QResultStack:
-        """Get the widget for this storage type."""
-        if (listview := cls.widget()) is None:
-            from napari_result_stack.widgets import QResultStack
-
-            listview = QResultStack(cls)
-            for val in cls._store:
-                listview.on_variable_added(val.label, val.value)
-            cls._widget_ref = weakref.ref(listview)
+        listview = QResultStack(cls)
+        for val in cls._store:
+            listview.on_variable_added(val.label, val.value)
+        cls._widget_ref = weakref.ref(listview)
         return listview
 
     @classmethod
@@ -193,7 +205,7 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     def _get_choice(cls, w: CategoricalWidget):
         # NOTE: cls is Stored, not Stored[X]!
         ann: type[Stored] = w.annotation
-        widgets = _StoredMeta._categorical_widgets[ann.hash_key()]
+        widgets = _StoredMeta._categorical_widgets[ann._hash_key()]
         if w not in widgets:
             widgets.append(w)
         _repr_func = cls._repr_map.get(ann.__args__[0], _repr_like)
@@ -204,8 +216,8 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
 
     @staticmethod
     def _store_value(gui: FunctionGui, value: _T, cls: _StoredMeta[_T]):
-        widget = cls.widget()
-        input_value = StoredValue(cls.count(), value)
+        widget = cls._widget()
+        input_value = StoredValue(cls._count, value)
         cls._store.append(input_value)
         if widget is not None:
             widget.on_variable_added(input_value.label, input_value.value)
@@ -216,7 +228,7 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
                 widget.on_overflown()
 
         # reset all the related categorical widgets.
-        for w in _StoredMeta._categorical_widgets.get(cls.hash_key(), []):
+        for w in _StoredMeta._categorical_widgets.get(cls._hash_key(), []):
             w.reset_choices()
 
         # Callback of the inner type annotation
@@ -234,6 +246,8 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     def _class_getitem(
         cls, value: type[_T] | tuple[type[_T], Hashable]
     ) -> _StoredMeta[_T]:
+        if cls.__args__:
+            raise TypeError("Cannot chain indexing.")
         if isinstance(value, tuple):
             if len(value) != 2:
                 raise TypeError(

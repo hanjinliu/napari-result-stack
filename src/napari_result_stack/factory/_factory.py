@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import sys
 from typing import Any, Callable, Iterator, MutableMapping, TypeVar, overload
 
 from qtpy import QtGui
 from qtpy import QtWidgets as QtW
+
+from napari_result_stack._qt_const import monospace
 
 _T = TypeVar("_T")
 _WidgetFactory = Callable[[_T], QtW.QWidget]
@@ -96,14 +97,7 @@ class WidgetFactoryMap(MutableMapping[type, _WidgetFactory]):
         val: Any, converter: Callable[[Any], str] = repr
     ) -> QtW.QLabel:
         w = QtW.QLabel()
-
-        if sys.platform == "win32":
-            _font = "Consolas"
-        elif sys.platform == "darwin":
-            _font = "Menlo"
-        else:
-            _font = "Monospace"
-        font = QtGui.QFont(_font, w.font().pointSize())
+        font = QtGui.QFont(monospace(), w.font().pointSize())
         w.setFont(font)
         w.setText(converter(val))
         w.setToolTip(f"{w.text()}\n({type(val).__name__})")
