@@ -14,7 +14,7 @@ from typing import (
 )
 
 from magicgui.widgets import EmptyWidget
-from typing_extensions import Annotated
+from typing_extensions import Annotated, get_args, get_origin
 
 if TYPE_CHECKING:
     from magicgui.widgets import FunctionGui
@@ -267,9 +267,9 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
 
         # NOTE: this string will be the class name.
         if _hash is cls._no_spec:
-            name = f"Stored[{_tp.__name__}]"
+            name = f"Stored[{_type_name(_tp)}]"
         else:
-            name = f"Stored[{_tp.__name__}, {_hash!r}]"
+            name = f"Stored[{_type_name(_tp)}, {_hash!r}]"
 
         ns = {
             "_store": [],
@@ -309,6 +309,19 @@ def _maxsize_for_type(tp: type[_T]) -> int:
         return 120
     else:
         return 10000
+
+
+def _type_name(tp) -> str:
+    if origin := get_origin(tp):
+        origin_name = _type_name(origin)
+        args = ", ".join(map(_type_name, get_args(tp)))
+        return f"{origin_name}[{args}]"
+    elif hasattr(tp, "__name__"):
+        return tp.__name__
+    elif hasattr(tp, "_name"):
+        return tp._name
+    else:
+        raise TypeError(f"Cannot get type name for {tp}")
 
 
 class StoredValue(Generic[_T]):

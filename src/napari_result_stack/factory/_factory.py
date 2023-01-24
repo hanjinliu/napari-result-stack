@@ -97,10 +97,14 @@ class WidgetFactoryMap(MutableMapping[type, _WidgetFactory]):
         val: Any, converter: Callable[[Any], str] = repr
     ) -> QtW.QLabel:
         w = QtW.QLabel()
+        text = converter(val)
         font = QtGui.QFont(monospace(), w.font().pointSize())
         w.setFont(font)
-        w.setText(converter(val))
-        w.setToolTip(f"{w.text()}\n({type(val).__name__})")
+        if len(text) < 60:
+            w.setText(text)
+        else:
+            w.setText(text[:56] + " ...")
+        w.setToolTip(f"{text}\n({type(val).__name__})")
         return w
 
 
