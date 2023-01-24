@@ -45,10 +45,9 @@ class QResultStack(QtW.QWidget):
         self._inner_layout = _inner_layout
         return None
 
-    def on_variable_added(self, val: Any) -> None:
+    def on_variable_added(self, label: Any, val: Any) -> None:
         qwidget = self._factories.create_widget(val)
-        stored = self._origin_stored_type
-        frame = QResultStackItem(str(stored.count()), qwidget, type(val))
+        frame = QResultStackItem(str(label), qwidget, type(val))
         self._inner_layout.addWidget(frame)
         return None
 

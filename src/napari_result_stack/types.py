@@ -13,13 +13,8 @@ from typing import (
     overload,
 )
 
-from magicgui.widgets import EmptyWidget, Widget
-from typing_extensions import Annotated, _AnnotatedAlias
-
-try:
-    from typing import _tp_cache
-except ImportError:
-    _tp_cache = lambda x: x  # noqa: E731
+from magicgui.widgets import EmptyWidget
+from typing_extensions import Annotated
 
 if TYPE_CHECKING:
     from magicgui.widgets import FunctionGui
@@ -28,61 +23,8 @@ if TYPE_CHECKING:
     from napari_result_stack.widgets import QResultStack
 
 
-# Bound type
-
-_W = TypeVar("_W", bound=Widget)
-_V = TypeVar("_V", bound=object)
 _T = TypeVar("_T")
-
-
-def bound(obj: Callable[[_W], _V]) -> type[_V]:
-    """Function version of ``Bound[...]``."""
-    if callable(obj):
-        outtype = obj.__annotations__.get("return", Any)
-    else:
-        outtype = type(obj)
-    while isinstance(outtype, _AnnotatedAlias):
-        outtype, _ = split_annotated_type(outtype)
-    return Annotated[outtype, {"bind": obj, "widget_type": EmptyWidget}]
-
-
-class _BoundAlias(type):
-    @overload
-    def __getitem__(cls, value: Callable[..., _V]) -> type[_V]:
-        ...
-
-    @overload
-    def __getitem__(cls, value: type[_V]) -> type[_V]:
-        ...
-
-    @_tp_cache
-    def __getitem__(cls, value):
-        if isinstance(value, tuple):
-            raise TypeError(
-                "Bound[...] should be used with only one "
-                "argument (the object to be bound)."
-            )
-        return bound(value)
-
-
-class Bound(metaclass=_BoundAlias):
-    """
-    Make Annotated type from a MagicField or a method, such as:
-
-    ``Bound[value]`` is identical to ``Annotated[Any, {"bind": value}]``.
-    """
-
-    def __new__(cls, *args):
-        raise TypeError(
-            "`Bound(...)` is deprecated since 0.5.21. Bound is now a generic "
-            "alias instead of a function. Please use `Bound[...]`."
-        )
-
-    def __init_subclass__(cls, *args, **kwargs):
-        raise TypeError(f"Cannot subclass {cls.__module__}.Bound")
-
-
-# Stored type
+_U = TypeVar("_U")
 
 
 class _StoredLastAlias(type):
@@ -100,7 +42,7 @@ class _StoredLastAlias(type):
         def _getter(w=None):
             store = stored_cls._store
             if len(store) > 0:
-                return store[-1]
+                return store[-1].value
             raise IndexError(f"Storage of {stored_cls} is empty.")
 
         return Annotated[
@@ -117,13 +59,13 @@ class StoredLast(Generic[_T], metaclass=_StoredLastAlias):
         raise TypeError(f"Cannot subclass {cls.__module__}.StoredLast.")
 
 
-class _StoredMeta(type):
+class _StoredMeta(type, Generic[_T]):
     _instances: dict[Hashable, _StoredMeta] = {}
     _categorical_widgets: defaultdict[
         Hashable, list[CategoricalWidget]
     ] = defaultdict(list)
 
-    _store: list
+    _store: list[StoredValue[_T]]
     _count: int
     _maxsize: int
     _widget_ref: weakref.ReferenceType[QResultStack]
@@ -131,11 +73,11 @@ class _StoredMeta(type):
     __args__: tuple[type]
 
     @overload
-    def __getitem__(cls, value: type[_T]) -> type[_T]:
+    def __getitem__(cls, value: type[_U]) -> type[_U]:
         ...
 
     @overload
-    def __getitem__(cls, value: tuple[type[_T], Hashable]) -> type[_T]:
+    def __getitem__(cls, value: tuple[type[_U], Hashable]) -> type[_U]:
         ...
 
     def __getitem__(cls, value):
@@ -161,12 +103,14 @@ class _StoredMeta(type):
     def clear(cls):
         cls._store.clear()
 
-    def get_widget(cls):
+    def get_widget(cls) -> QResultStack:
         """Get the widget for this storage type."""
         if (listview := cls.widget()) is None:
             from napari_result_stack.widgets import QResultStack
 
             listview = QResultStack(cls)
+            for val in cls._store:
+                listview.on_variable_added(val.label, val.value)
             cls._widget_ref = weakref.ref(listview)
         return listview
 
@@ -194,7 +138,6 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     are stored for later use in functions with the same annotation.
     """
 
-    _store: list[_T]
     _count: int
     _maxsize: int
     _hash_value: Hashable
@@ -255,16 +198,17 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
             widgets.append(w)
         _repr_func = cls._repr_map.get(ann.__args__[0], _repr_like)
         return [
-            (f"{i}: {_repr_func(x)}", x)
-            for i, x in enumerate(reversed(ann._store))
+            (f"{st.label}: {_repr_func(st.value)}", st.value)
+            for st in reversed(ann._store)
         ]
 
     @staticmethod
-    def _store_value(gui: FunctionGui, value, cls: type[Stored]):
+    def _store_value(gui: FunctionGui, value: _T, cls: _StoredMeta[_T]):
         widget = cls.widget()
-        cls._store.append(value)
+        input_value = StoredValue(cls.count(), value)
+        cls._store.append(input_value)
         if widget is not None:
-            widget.on_variable_added(value)
+            widget.on_variable_added(input_value.label, input_value.value)
         cls._count += 1
         if len(cls._store) > cls._maxsize:
             cls._store.pop(0)
@@ -287,7 +231,9 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
             cb(gui, value, inner_type)
 
     @classmethod
-    def _class_getitem(cls, value):
+    def _class_getitem(
+        cls, value: type[_T] | tuple[type[_T], Hashable]
+    ) -> _StoredMeta[_T]:
         if isinstance(value, tuple):
             if len(value) != 2:
                 raise TypeError(
@@ -301,10 +247,15 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
                     f"got {type(value)}."
                 )
             _tp, _hash = value, cls._no_spec
-        key = (_tp, _hash)
+        key: tuple[type[_T], Hashable] = (_tp, _hash)
         if outtype := _StoredMeta._instances.get(key):
             return outtype
-        name = f"Stored[{_tp.__name__}, {_hash!r}]"
+
+        # NOTE: this string will be the class name.
+        if _hash is cls._no_spec:
+            name = f"Stored[{_tp.__name__}]"
+        else:
+            name = f"Stored[{_tp.__name__}, {_hash!r}]"
 
         ns = {
             "_store": [],
@@ -316,6 +267,10 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
         outtype: cls = _StoredMeta(name, (cls,), ns)
         outtype.__args__ = (_tp,)
         _StoredMeta._instances[key] = outtype
+        from napari_result_stack import QResultViewer
+
+        if cur := QResultViewer.current():
+            cur.update_choices()
         return outtype
 
 
@@ -342,17 +297,7 @@ def _maxsize_for_type(tp: type[_T]) -> int:
         return 10000
 
 
-def split_annotated_type(annotation: _AnnotatedAlias) -> tuple[Any, dict]:
-    """Split an Annotated type into its base type and options dict."""
-    if not isinstance(annotation, _AnnotatedAlias):
-        raise TypeError("Type hint must be an 'Annotated' type.")
-    if not isinstance(annotation.__metadata__[0], dict):
-        raise TypeError(
-            "Invalid Annotated format for magicgui. First arg must be a dict"
-        )
-
-    meta: dict = {}
-    for _meta in annotation.__metadata__:
-        meta.update(_meta)
-
-    return annotation.__args__[0], meta
+class StoredValue(Generic[_T]):
+    def __init__(self, label: Any, value: _T) -> None:
+        self.label = label
+        self.value = value
