@@ -34,7 +34,7 @@ class DisplayLabel(LineEdit):
         super().__init__(**kwargs)
         ann = self.annotation
         if isinstance(ann, _StoredMeta):
-            widgets = _StoredMeta._categorical_widgets[ann._hash_key()]
+            widgets = _StoredMeta._bound_widgets[ann._hash_key()]
             if self not in widgets:
                 widgets.append(self)
         self.enabled = False
@@ -100,9 +100,7 @@ class _StoredLast(Generic[_T], metaclass=_StoredLastAlias):
 
 class _StoredMeta(type, Generic[_T]):
     _instances: dict[Hashable, _StoredMeta] = {}
-    _categorical_widgets: defaultdict[Hashable, list[Widget]] = defaultdict(
-        list
-    )
+    _bound_widgets: defaultdict[Hashable, list[Widget]] = defaultdict(list)
 
     _store: list[StoredValue[_T]]
     _count: int
@@ -136,6 +134,24 @@ class _StoredMeta(type, Generic[_T]):
     def pop(cls, index: int = -1) -> StoredValue[_T]:
         """Pop the item at given index from the storage."""
         return cls._store.pop(index)
+
+    def append(cls, value: _T):
+        """Append the value to the storage."""
+        widget = cls._widget()
+        input_value = StoredValue(cls._count, value)
+        cls._store.append(input_value)
+        if widget is not None:
+            widget.on_variable_added(input_value.label, input_value.value)
+        cls._count += 1
+        if len(cls._store) > cls._maxsize:
+            cls._store.pop(0)
+            if widget is not None:
+                widget.on_overflown()
+
+        # reset all the related categorical widgets.
+        for w in _StoredMeta._bound_widgets.get(cls._hash_key(), []):
+            w.reset_choices()
+        return None
 
     def value(cls, index: int = -1) -> _T:
         """Get the value at given index from the storage."""
@@ -244,27 +260,14 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     def _get_choice(cls, w: Widget):
         # NOTE: cls is Stored, not Stored[X]!
         ann: _StoredMeta = w.annotation
-        widgets = _StoredMeta._categorical_widgets[ann._hash_key()]
+        widgets = _StoredMeta._bound_widgets[ann._hash_key()]
         if w not in widgets:
             widgets.append(w)
         return [(st.fmt(), st.value) for st in ann._store]
 
     @staticmethod
     def _store_value(gui: FunctionGui, value: _T, cls: _StoredMeta[_T]):
-        widget = cls._widget()
-        input_value = StoredValue(cls._count, value)
-        cls._store.append(input_value)
-        if widget is not None:
-            widget.on_variable_added(input_value.label, input_value.value)
-        cls._count += 1
-        if len(cls._store) > cls._maxsize:
-            cls._store.pop(0)
-            if widget is not None:
-                widget.on_overflown()
-
-        # reset all the related categorical widgets.
-        for w in _StoredMeta._categorical_widgets.get(cls._hash_key(), []):
-            w.reset_choices()
+        cls.append(value)
 
         # Callback of the inner type annotation
         try:
@@ -324,18 +327,15 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
 
 
 def _is_type_like(x: Any):
-    return isinstance(x, (type, typing._GenericAlias)) or hasattr(  # noqa
-        x, "__supertype__"
-    )
+    _tp = (type, typing._GenericAlias)  # noqa
+    return isinstance(x, _tp) or hasattr(x, "__subclasshook__")
 
 
 def _maxsize_for_type(tp: type[_T]) -> int:
     if hasattr(tp, "__array__"):
         return 12
-    elif tp is object:
-        return 120
     else:
-        return 10000
+        return 60
 
 
 def _type_name(tp) -> str:
@@ -347,6 +347,8 @@ def _type_name(tp) -> str:
         return tp.__name__
     elif hasattr(tp, "_name"):
         return tp._name
+    elif tp in (..., None, NotImplemented):
+        return str(tp)
     else:
         raise TypeError(f"Cannot get type name for {tp}")
 

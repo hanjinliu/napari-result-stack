@@ -7,7 +7,16 @@
 [![codecov](https://codecov.io/gh/hanjinliu/napari-result-stack/branch/main/graph/badge.svg)](https://codecov.io/gh/hanjinliu/napari-result-stack)
 [![napari hub](https://img.shields.io/endpoint?url=https://api.napari-hub.org/shields/napari-result-stack)](https://napari-hub.org/plugins/napari-result-stack)
 
-Widgets and type annotations for storing function results of any types
+Widgets and type annotations for storing function results of any types.
+
+## `Stored` type
+
+```python
+from napari_result_stack import Stored
+from magicgui import magicgui
+
+
+```
 
 ----------------------------------
 

@@ -45,4 +45,6 @@ def register_factories(wfactory: WidgetFactoryMap) -> None:
     wfactory.register(pd.Series, lambda x: QDictView(x.to_dict()))
     wfactory.register(Mapping, QDictView)
     wfactory.register(np.ndarray, lambda x: QTextView(repr(x)))
-    wfactory.register(FunctionType, lambda x: QTextView(inspect.getsource(x)))
+    wfactory.register(
+        FunctionType, lambda x: QTextView(inspect.getsource(x).rstrip())
+    )
