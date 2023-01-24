@@ -13,18 +13,34 @@ from typing import (
     overload,
 )
 
-from magicgui.widgets import EmptyWidget
+from magicgui.widgets import LineEdit, Widget
 from typing_extensions import Annotated, get_args, get_origin
 
 if TYPE_CHECKING:
     from magicgui.widgets import FunctionGui
-    from magicgui.widgets.bases import CategoricalWidget
 
     from napari_result_stack.widgets import QResultStack
 
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
+
+
+class DisplayLabel(LineEdit):
+    """Widget to display the last stored value."""
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        ann = self.annotation
+        if isinstance(ann, _StoredMeta):
+            widgets = _StoredMeta._categorical_widgets[ann._hash_key()]
+            if self not in widgets:
+                widgets.append(self)
+        self.enabled = False
+
+    def reset_choices(self, *_):
+        """Strictly is not reset 'choices' but for simplicity use this name."""
+        self.value = repr(self.value)
 
 
 class _StoredLastAlias(type):
@@ -46,8 +62,8 @@ class _StoredLastAlias(type):
             raise IndexError(f"Storage of {stored_cls} is empty.")
 
         return Annotated[
-            stored_cls.__args__[0],
-            {"bind": _getter, "widget_type": EmptyWidget},
+            stored_cls,
+            {"bind": _getter, "widget_type": DisplayLabel, "visible": True},
         ]
 
 
@@ -61,9 +77,9 @@ class StoredLast(Generic[_T], metaclass=_StoredLastAlias):
 
 class _StoredMeta(type, Generic[_T]):
     _instances: dict[Hashable, _StoredMeta] = {}
-    _categorical_widgets: defaultdict[
-        Hashable, list[CategoricalWidget]
-    ] = defaultdict(list)
+    _categorical_widgets: defaultdict[Hashable, list[Widget]] = defaultdict(
+        list
+    )
 
     _store: list[StoredValue[_T]]
     _count: int
@@ -202,7 +218,7 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
         return wrapper(func) if func is not None else wrapper
 
     @classmethod
-    def _get_choice(cls, w: CategoricalWidget):
+    def _get_choice(cls, w: Widget):
         # NOTE: cls is Stored, not Stored[X]!
         ann: type[Stored] = w.annotation
         widgets = _StoredMeta._categorical_widgets[ann._hash_key()]

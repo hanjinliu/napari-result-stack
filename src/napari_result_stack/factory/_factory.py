@@ -112,4 +112,5 @@ _GLOBAL_WIDGET_FACTORIES = WidgetFactoryMap()
 
 
 def get_factories() -> WidgetFactoryMap:
+    """Get the widget factory map object."""
     return _GLOBAL_WIDGET_FACTORIES
