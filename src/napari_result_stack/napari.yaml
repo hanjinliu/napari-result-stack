@@ -3,7 +3,7 @@ display_name: Result stack
 contributions:
   commands:
     - id: napari-result-stack.make_qwidget
-      python_name: napari_result_stack._widget:ExampleQWidget
+      python_name: napari_result_stack:QResultInspector
       title: Open Result stack
   widgets:
     - command: napari-result-stack.make_qwidget

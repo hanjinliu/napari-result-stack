@@ -92,7 +92,9 @@ class WidgetFactoryMap(MutableMapping[type, _WidgetFactory]):
             raise TypeError("register() takes at most 2 arguments")
 
     @staticmethod
-    def default_factory(val: Any) -> QtW.QLabel:
+    def default_factory(
+        val: Any, converter: Callable[[Any], str] = repr
+    ) -> QtW.QLabel:
         w = QtW.QLabel()
 
         if sys.platform == "win32":
@@ -103,7 +105,8 @@ class WidgetFactoryMap(MutableMapping[type, _WidgetFactory]):
             _font = "Monospace"
         font = QtGui.QFont(_font, w.font().pointSize())
         w.setFont(font)
-        w.setText(repr(val))
+        w.setText(converter(val))
+        w.setToolTip(f"{w.text()}\n({type(val).__name__})")
         return w
 
 

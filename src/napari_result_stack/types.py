@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from magicgui.widgets import FunctionGui
     from magicgui.widgets.bases import CategoricalWidget
 
-    from napari_result_stack._widget import QResultStack
+    from napari_result_stack.widgets import QResultStack
 
 
 # Bound type
@@ -126,6 +126,8 @@ class _StoredMeta(type):
     _store: list
     _count: int
     _maxsize: int
+    _widget_ref: weakref.ReferenceType[QResultStack]
+    _hash_value: Hashable
     __args__: tuple[type]
 
     @overload
@@ -139,11 +141,38 @@ class _StoredMeta(type):
     def __getitem__(cls, value):
         return Stored._class_getitem(value)
 
+    def hash_key(cls) -> tuple[type[_T], Hashable]:
+        return cls.__args__[0], cls._hash_value
+
+    def __repr__(cls: _StoredMeta) -> str:
+        return cls.__name__
+
     def length(self) -> int:
         return len(self._store)
 
     def count(self) -> int:
         return self._count
+
+    def widget(self) -> QResultStack | None:
+        if self._widget_ref is None:
+            return None
+        return self._widget_ref()
+
+    def clear(cls):
+        cls._store.clear()
+
+    def get_widget(cls):
+        """Get the widget for this storage type."""
+        if (listview := cls.widget()) is None:
+            from napari_result_stack.widgets import QResultStack
+
+            listview = QResultStack(cls)
+            cls._widget_ref = weakref.ref(listview)
+        return listview
+
+    @classmethod
+    def _get_choices_for_combobox(cls, *_):
+        return [(repr(stored), stored) for stored in cls._instances.values()]
 
 
 _U = TypeVar("_U")
@@ -191,16 +220,6 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
             outtype._maxsize = maxsize
         return outtype
 
-    @classmethod
-    def hash_key(cls) -> tuple[type[_T], Hashable]:
-        return cls.__args__[0], cls._hash_value
-
-    @classmethod
-    def widget(self) -> QResultStack | None:
-        if self._widget_ref is None:
-            return None
-        return self._widget_ref()
-
     @overload
     @classmethod
     def register_repr(
@@ -226,20 +245,6 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
             return f
 
         return wrapper(func) if func is not None else wrapper
-
-    @classmethod
-    def clear(cls):
-        cls._store.clear()
-
-    @classmethod
-    def get_widget(cls):
-        """Get the widget for this storage type."""
-        if (listview := cls.widget()) is None:
-            from napari_result_stack._widget import QResultStack
-
-            listview = QResultStack(cls)
-            cls._widget_ref = weakref.ref(listview)
-        return listview
 
     @classmethod
     def _get_choice(cls, w: CategoricalWidget):
