@@ -13,11 +13,12 @@ from typing import (
     overload,
 )
 
-from magicgui.widgets import LineEdit, Widget
+from magicgui.widgets import ComboBox, LineEdit, Widget
 from typing_extensions import Annotated, get_args, get_origin
 
 if TYPE_CHECKING:
     from magicgui.widgets import FunctionGui
+    from qtpy.QtWidgets import QComboBox
 
     from napari_result_stack.widgets import QResultStack
 
@@ -41,6 +42,27 @@ class DisplayLabel(LineEdit):
     def reset_choices(self, *_):
         """Strictly is not reset 'choices' but for simplicity use this name."""
         self.value = repr(self.value)
+
+
+class StoredValueComboBox(ComboBox):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        from ._models import QComboBoxModel
+        from ._qt_const import monospace_font
+
+        qcombobox: QComboBox = self.native
+        qcombobox.setFont(monospace_font())
+        qcombobox.setModel(QComboBoxModel(qcombobox))
+        qcombobox.view().setMinimumWidth(200)
+        ann = self.annotation
+        if isinstance(ann, _StoredMeta):
+            self._default_choices = Stored._get_choice
+        self.reset_choices()
+
+    def reset_choices(self, *_: Any):
+        super().reset_choices(*_)
+        if choices := self.choices:
+            self.value = choices[-1]  # select last
 
 
 class _StoredLastAlias(type):
@@ -220,15 +242,11 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     @classmethod
     def _get_choice(cls, w: Widget):
         # NOTE: cls is Stored, not Stored[X]!
-        ann: type[Stored] = w.annotation
+        ann: _StoredMeta = w.annotation
         widgets = _StoredMeta._categorical_widgets[ann._hash_key()]
         if w not in widgets:
             widgets.append(w)
-        _repr_func = cls._repr_map.get(ann.__args__[0], _repr_like)
-        return [
-            (f"{st.label}: {_repr_func(st.value)}", st.value)
-            for st in reversed(ann._store)
-        ]
+        return [(st.fmt(), st.value) for st in ann._store]
 
     @staticmethod
     def _store_value(gui: FunctionGui, value: _T, cls: _StoredMeta[_T]):
@@ -310,14 +328,6 @@ def _is_type_like(x: Any):
     )
 
 
-def _repr_like(x: Any):
-    lines = repr(x).split("\n")
-    if len(lines) == 1:
-        return lines[0]
-    else:
-        return lines[0] + " ... "
-
-
 def _maxsize_for_type(tp: type[_T]) -> int:
     if hasattr(tp, "__array__"):
         return 12
@@ -344,3 +354,14 @@ class StoredValue(Generic[_T]):
     def __init__(self, label: Any, value: _T) -> None:
         self.label = label
         self.value = value
+
+    def fmt(self) -> str:
+        typ = type(self.value).__name__
+        return f"({self.label}) {typ}\n{_repr_like(self.value)}"
+
+
+def _repr_like(x: Any):
+    lines = repr(x).split("\n")
+    if len(lines) > 6:
+        lines = lines[:6] + [" ... "]
+    return "\n".join(lines)

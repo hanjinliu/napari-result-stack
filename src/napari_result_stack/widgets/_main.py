@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from magicgui.widgets import ComboBox
-from qtpy import QtGui
 from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
-from napari_result_stack._qt_const import monospace
+from napari_result_stack._qt_const import monospace_font
 from napari_result_stack.types import _StoredMeta
 
 
@@ -49,7 +48,7 @@ class QResultViewer(QtW.QWidget):
         self._combobox = ComboBox(
             choices=_StoredMeta._get_choices_for_combobox
         )
-        self._combobox.native.setFont(QtGui.QFont(monospace()))
+        self._combobox.native.setFont(monospace_font())
         self._stack_widget = QtW.QStackedWidget()
         _layout.addWidget(self._combobox.native)
         self._combobox.changed.connect(self._on_combobox_changed)

@@ -1,5 +1,7 @@
 import sys
 
+from qtpy.QtGui import QFont
+
 
 def monospace() -> str:
     if sys.platform == "win32":
@@ -9,3 +11,7 @@ def monospace() -> str:
     else:
         _font = "Monospace"
     return _font
+
+
+def monospace_font():
+    return QFont(monospace())
