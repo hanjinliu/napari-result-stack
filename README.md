@@ -11,12 +11,32 @@ Widgets and type annotations for storing function results of any types.
 
 ## `Stored` type
 
+Type `Stored[T]` is equivalent to `T` for the type checker, but `magicgui` aware of this annotation and
+behaves as a "storage" for the `T` instances.
+
 ```python
-from napari_result_stack import Stored
+from pathlib import Path
+import pandas as pd
 from magicgui import magicgui
+from napari_result_stack import Stored
 
+# returned values will be stored in a result stack.
+@magicgui
+def provide_data(path: Path) -> Stored[pd.DataFrame]:
+    return pd.read_csv(path)
 
+# You can choose one of the values stored in the result stack.
+@magicgui
+def print_data(df: Stored[pd.DataFrame]):
+    print(df)
 ```
+
+- Different types use different storage. e.g. `Stored[int]` and `Stored[str]` do not share the same place.
+- Even for the same type, you can specify the second key to split the storage. e.g. `Stored[int]`, `Stored[int, 0]` and `Stored[int, "my-plugin-name"]` use the distinct storages.
+
+## Result stack widget
+
+You'll find all the stored values in the plugin widget of `napari-result-stack`.
 
 ----------------------------------
 
