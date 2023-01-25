@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any
+import weakref
+from typing import TYPE_CHECKING, Any, Callable
 
 from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
@@ -50,7 +51,7 @@ class QResultStack(QtW.QWidget):
 
     def on_variable_added(self, label: Any, val: Any) -> None:
         qwidget = self._factories.create_widget(val)
-        frame = QResultStackItem(str(label), qwidget, type(val), self)
+        frame = QResultStackItem(label, qwidget, type(val), self)
         self._inner_layout.addWidget(frame)
         return None
 
@@ -73,37 +74,42 @@ class QResultStack(QtW.QWidget):
 
 class QResultStackItem(QtW.QGroupBox):
     def __init__(
-        self, label: str, widget: QtW.QWidget, typ: type, parent: QResultStack
+        self, label: int, widget: QtW.QWidget, typ: type, parent: QResultStack
     ):
-        super().__init__(parent)
-        if isinstance(widget, QtW.QLabel):
-            # simple types
-            _layout = QtW.QHBoxLayout()
-        else:
-            _layout = QtW.QVBoxLayout()
+        super().__init__()
+        self._parent_stack = weakref.ref(parent)
+        _layout = QtW.QVBoxLayout()
         self.setLayout(_layout)
-        _layout.setContentsMargins(0, 0, 0, 0)
+        self._label_number = label
+        _layout.setContentsMargins(2, 2, 2, 2)
         _layout.setSpacing(2)
 
         # setup label
         _s = "&nbsp;"
-
-        label = f"{_s}({label}){_s * 2}"
+        lbl = f"{_s}({label}){_s * 2}"
         label_text = (
-            f"{_styled(label, 'gray', 'Arial')}{_styled(typ.__name__, 'lime')}"
+            f"{_styled(lbl, 'gray', 'Arial')}{_styled(typ.__name__, 'lime')}"
         )
 
-        self._label = _label_widget(label_text, self)
-        font = self._label.font()
-        font.setBold(True)
-        self._label.setFont(font)
-        self._label.setFixedWidth(90)
-        self._label.setToolTip(f"{typ.__module__}.{typ.__name__}")
+        _label_wdt = _label_widget(label_text, self)
+        _label_wdt.setToolTip(f"{typ.__module__}.{typ.__name__}")
 
-        _layout.addWidget(self._label)
+        _btn = _close_button(self._on_button_clicked, 16)
+
+        _layout.addWidget(_h_container(_label_wdt, _btn))
         _layout.addWidget(widget)
 
         self.setMaximumHeight(max(widget.minimumHeight() + 16, 120))
+
+    def _on_button_clicked(self):
+        parent = self._parent_stack()
+        if parent is None:
+            return
+        for i, st in enumerate(parent._origin_stored_type._store):
+            if st.label == self._label_number:
+                parent._origin_stored_type.pop(i)
+                return
+        raise RuntimeError("Unreachable")
 
 
 def _label_widget(text: str, parent: QtW.QWidget) -> QtW.QLabel:
@@ -113,9 +119,33 @@ def _label_widget(text: str, parent: QtW.QWidget) -> QtW.QLabel:
     )
     wdt.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
     wdt.setSizePolicy(
-        QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Expanding
+        QtW.QSizePolicy.Policy.Maximum, QtW.QSizePolicy.Policy.Expanding
     )
+    font = wdt.font()
+    font.setBold(True)
+    wdt.setFont(font)
+    wdt.setFixedWidth(90)
     return wdt
+
+
+def _close_button(slot: Callable, size: int):
+    _btn = QtW.QPushButton("✕")
+    _btn.clicked.connect(slot)
+    _btn.setFixedSize(size, size)
+    return _btn
+
+
+def _h_container(a: QtW.QWidget, b: QtW.QWidget):
+    cnt = QtW.QWidget()
+    layout = QtW.QHBoxLayout()
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.addWidget(a, 3, Qt.AlignmentFlag.AlignLeft)
+    layout.addWidget(b, 1, Qt.AlignmentFlag.AlignRight)
+    cnt.setLayout(layout)
+    cnt.setSizePolicy(
+        QtW.QSizePolicy.Policy.Expanding, QtW.QSizePolicy.Policy.Minimum
+    )
+    return cnt
 
 
 def _styled(text: str, color: str, family="monospace"):

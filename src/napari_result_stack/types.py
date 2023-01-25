@@ -3,7 +3,15 @@ from __future__ import annotations
 import typing
 import weakref
 from collections import defaultdict
-from typing import TYPE_CHECKING, Any, Generic, Hashable, TypeVar, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Hashable,
+    SupportsIndex,
+    TypeVar,
+    overload,
+)
 
 from magicgui.widgets import ComboBox, LineEdit, Widget
 from typing_extensions import Annotated, get_args, get_origin
@@ -40,11 +48,12 @@ class StoredValueComboBox(ComboBox):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         from ._models import QComboBoxModel
-        from ._qt_const import monospace_font
+        from ._qt_const import monospace_font, monospace_font_metric
 
         qcombobox: QComboBox = self.native
         qcombobox.setFont(monospace_font())
         qcombobox.setModel(QComboBoxModel(qcombobox))
+        qcombobox.setFixedHeight(int(monospace_font_metric().height() * 2.1))
         qcombobox.view().setMinimumWidth(200)
         ann = self.annotation
         if isinstance(ann, _StoredMeta):
@@ -54,6 +63,7 @@ class StoredValueComboBox(ComboBox):
     def reset_choices(self, *_: Any):
         super().reset_choices(*_)
         qcombobox: QComboBox = self.native
+        # select the last
         if qcombobox.count() > 0:
             qcombobox.setCurrentIndex(qcombobox.count() - 1)
 
@@ -109,24 +119,34 @@ class _AbstractView(Generic[_T]):
 
 
 class _StoredValueView(_AbstractView[_T]):
-    def __getitem__(self, index: int):
-        for label, value in self._get_cls()._store:
-            if label == index:
-                return value
-        raise KeyError(f"{index!r}")
+    def __getitem__(self, index: SupportsIndex):
+        return self._get_cls()._store[index]
 
     def __repr__(self) -> str:
         clsname = type(self).__name__
-        items = ", ".join(
-            f"{label!r}: {value!r}" for label, value in self._get_cls()._store
-        )
-        return f"{clsname}[{self._get_cls()}]({{{items}}})"
+        lst = [st.value for st in self._get_cls()._store]
+        return f"{clsname}[{self._get_cls()}]({lst!r})"
+
+    __default = object()
+
+    def get(self, label: SupportsIndex, default: _U = __default) -> _T | _U:
+        """Get stored value by the label integer."""
+        if not isinstance(label, SupportsIndex):
+            raise TypeError(f"{label!r} cannot be interpreted as an integer.")
+        label = label.__index__()
+        if label >= 0:
+            for st in self._get_cls()._store:
+                if st.label == label:
+                    return st.value
+        if default is self.__default:
+            raise KeyError(label)
+        return default
 
     def append(self, value: _T):
         """Append the value to the storage."""
         return self._get_cls().append(value)
 
-    def pop(self, index: int = -1) -> _T:
+    def pop(self, index: SupportsIndex = -1) -> _T:
         """Pop the item at given index from the storage."""
         return self._get_cls().pop(index)
 
@@ -152,6 +172,7 @@ class _StoredValueView(_AbstractView[_T]):
                 widget.on_variable_popped(0)
 
     def __len__(self) -> int:
+        """Number of stored values."""
         return len(self._get_cls()._store)
 
 
@@ -195,6 +216,10 @@ class _StoredMeta(type, Generic[_T]):
         widget = cls._widget()
         if widget is not None:
             widget.on_variable_popped(index)
+
+        # reset all the related categorical widgets.
+        for w in _StoredMeta._bound_widgets.get(cls._hash_key(), []):
+            w.reset_choices()
         return out
 
     def append(cls, value: _T):

@@ -1,6 +1,6 @@
 import sys
 
-from qtpy.QtGui import QFont
+from qtpy.QtGui import QFont, QFontMetrics
 
 
 def monospace() -> str:
@@ -15,3 +15,7 @@ def monospace() -> str:
 
 def monospace_font():
     return QFont(monospace())
+
+
+def monospace_font_metric() -> QFontMetrics:
+    return QFontMetrics(monospace_font())
