@@ -73,6 +73,8 @@ class QResultStack(QtW.QWidget):
 
 
 class QResultStackItem(QtW.QGroupBox):
+    """An item to be added to QResultStack."""
+
     def __init__(
         self, label: int, widget: QtW.QWidget, typ: type, parent: QResultStack
     ):
@@ -102,6 +104,7 @@ class QResultStackItem(QtW.QGroupBox):
         self.setMaximumHeight(max(widget.minimumHeight() + 16, 120))
 
     def _on_button_clicked(self):
+        """Pop this item from the QResultStackWidget and storage."""
         parent = self._parent_stack()
         if parent is None:
             return

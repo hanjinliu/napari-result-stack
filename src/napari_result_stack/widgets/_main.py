@@ -24,14 +24,17 @@ class QResultViewer(QtW.QWidget):
 
     @classmethod
     def current(cls) -> QResultViewer | None:
+        """Get the current widget instance."""
         return cls._current_instance
 
     def update_choices(self):
+        """Update the choices of the combo box."""
         # NOTE: Name of this method should not be reset_choices! Otherwise
         # this will be call every time layer is updated.
         self._combobox.reset_choices()
 
     def setWidget(self, wdt: QtW.QWidget):
+        """Set the widget to be shown below the combo box."""
         if self._widget is not None:
             self._layout.removeWidget(self._widget)
         self._layout.setAlignment(Qt.AlignmentFlag.AlignTop)
