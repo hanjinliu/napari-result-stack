@@ -8,6 +8,7 @@ from typing import (
     Any,
     Generic,
     Hashable,
+    Iterator,
     SupportsIndex,
     TypeVar,
     overload,
@@ -33,8 +34,8 @@ class DisplayLabel(LineEdit):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         ann = self.annotation
-        if isinstance(ann, _StoredMeta):
-            widgets = _StoredMeta._bound_widgets[ann._hash_key()]
+        if isinstance(ann, StoredMeta):
+            widgets = StoredMeta._bound_widgets[ann._hash_key()]
             if self not in widgets:
                 widgets.append(self)
         self.enabled = False
@@ -56,7 +57,7 @@ class StoredValueComboBox(ComboBox):
         qcombobox.setFixedHeight(int(monospace_font_metric().height() * 2.1))
         qcombobox.view().setMinimumWidth(200)
         ann = self.annotation
-        if isinstance(ann, _StoredMeta):
+        if isinstance(ann, StoredMeta):
             self._default_choices = Stored._get_choice
         self.reset_choices()
 
@@ -114,7 +115,7 @@ class _AbstractView(Generic[_T]):
     def __init__(self, key):
         self._key = key
 
-    def _get_cls(self) -> _StoredMeta[_T]:
+    def _get_cls(self) -> StoredMeta[_T]:
         return Stored._class_getitem(self._key)
 
 
@@ -163,7 +164,7 @@ class _StoredValueView(_AbstractView[_T]):
         stored_cls = self._get_cls()
         widget = stored_cls._widget()
         stored_cls._maxsize = size
-        n_overflow = len(stored_cls) - size
+        n_overflow = len(stored_cls._store) - size
         if n_overflow <= 0:
             return
         for _ in range(n_overflow):
@@ -175,9 +176,12 @@ class _StoredValueView(_AbstractView[_T]):
         """Number of stored values."""
         return len(self._get_cls()._store)
 
+    def __iter__(self) -> Iterator[_T]:
+        return iter(map(lambda x: x.value, self._get_cls()._store))
 
-class _StoredMeta(type, Generic[_T]):
-    _instances: dict[Hashable, _StoredMeta] = {}
+
+class StoredMeta(type, Generic[_T]):
+    _instances: dict[Hashable, StoredMeta] = {}
     _bound_widgets: defaultdict[Hashable, list[Widget]] = defaultdict(list)
 
     _store: list[StoredValue[_T]]
@@ -185,6 +189,11 @@ class _StoredMeta(type, Generic[_T]):
     _maxsize: int
     _widget_ref: weakref.ReferenceType[QResultStack]
     _hash_value: Hashable
+    _class_getitem: classmethod[StoredMeta]
+
+    Lastof: _StoredLastAlias
+    valuesof: _StoredValueViewProvider
+    widgetof: _ResultStackProvider
     __args__: tuple[type]
 
     # NOTE: These overloaded functions are NOT correct. They deceive the type
@@ -197,9 +206,9 @@ class _StoredMeta(type, Generic[_T]):
     # fmt: on
 
     def __getitem__(cls, value):
-        return Stored._class_getitem(value)
+        return cls._class_getitem(value)
 
-    def __repr__(cls: _StoredMeta) -> str:
+    def __repr__(cls: StoredMeta) -> str:
         return cls.__name__
 
     def length(self) -> int:
@@ -218,7 +227,7 @@ class _StoredMeta(type, Generic[_T]):
             widget.on_variable_popped(index)
 
         # reset all the related categorical widgets.
-        for w in _StoredMeta._bound_widgets.get(cls._hash_key(), []):
+        for w in StoredMeta._bound_widgets.get(cls._hash_key(), []):
             w.reset_choices()
         return out
 
@@ -234,7 +243,7 @@ class _StoredMeta(type, Generic[_T]):
             cls._store.pop(0)
 
         # reset all the related categorical widgets.
-        for w in _StoredMeta._bound_widgets.get(cls._hash_key(), []):
+        for w in StoredMeta._bound_widgets.get(cls._hash_key(), []):
             w.reset_choices()
         return None
 
@@ -278,7 +287,7 @@ class DefaultSpec:
         return id(self)
 
 
-class Stored(Generic[_T], metaclass=_StoredMeta):
+class Stored(Generic[_T], metaclass=StoredMeta):
     """
     Use variable store of specific type.
 
@@ -301,14 +310,14 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     @classmethod
     def _get_choice(cls, w: Widget):
         # NOTE: cls is Stored, not Stored[X]!
-        ann: _StoredMeta = w.annotation
-        widgets = _StoredMeta._bound_widgets[ann._hash_key()]
+        ann: StoredMeta = w.annotation
+        widgets = StoredMeta._bound_widgets[ann._hash_key()]
         if w not in widgets:
             widgets.append(w)
         return [(st.fmt(), st.value) for st in ann._store]
 
     @staticmethod
-    def _store_value(gui: FunctionGui, value: _T, cls: _StoredMeta[_T]):
+    def _store_value(gui: FunctionGui, value: _T, cls: StoredMeta[_T]):
         cls.append(value)
 
         # Callback of the inner type annotation
@@ -325,7 +334,7 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     @classmethod
     def _class_getitem(
         cls, value: type[_T] | tuple[type[_T], Hashable]
-    ) -> _StoredMeta[_T]:
+    ) -> StoredMeta[_T]:
         if cls.__args__:
             raise TypeError("Cannot chain indexing.")
         if isinstance(value, tuple):
@@ -342,7 +351,7 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
                 )
             _tp, _hash = value, cls._no_spec
         key: tuple[type[_T], Hashable] = (_tp, _hash)
-        if outtype := _StoredMeta._instances.get(key):
+        if outtype := StoredMeta._instances.get(key):
             return outtype
 
         # NOTE: this string will be the class name.
@@ -358,9 +367,9 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
             "_maxsize": _maxsize_for_type(_tp),
             "_widget_ref": None,
         }
-        outtype: cls = _StoredMeta(name, (cls,), ns)
+        outtype: cls = StoredMeta(name, (cls,), ns)
         outtype.__args__ = (_tp,)
-        _StoredMeta._instances[key] = outtype
+        StoredMeta._instances[key] = outtype
         from napari_result_stack import QResultViewer
 
         if cur := QResultViewer.current():

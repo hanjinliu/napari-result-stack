@@ -7,13 +7,13 @@ from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
 if TYPE_CHECKING:
-    from napari_result_stack.types import _StoredMeta
+    from napari_result_stack.types import StoredMeta
 
 
 class QResultStack(QtW.QWidget):
     def __init__(
         self,
-        stored: _StoredMeta,
+        stored: StoredMeta,
         parent: QtW.QWidget | None = None,
     ) -> None:
         from napari_result_stack.factory import (

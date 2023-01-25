@@ -6,7 +6,7 @@ from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
 from napari_result_stack._qt_const import monospace_font
-from napari_result_stack.types import _StoredMeta
+from napari_result_stack.types import StoredMeta
 
 
 class QResultViewer(QtW.QWidget):
@@ -38,7 +38,7 @@ class QResultViewer(QtW.QWidget):
         self._layout.addWidget(wdt)
         self._widget = wdt
 
-    def _on_combobox_changed(self, stored: _StoredMeta):
+    def _on_combobox_changed(self, stored: StoredMeta):
         self.setWidget(stored.get_widget())
 
     def _setup_ui(self):
@@ -46,9 +46,7 @@ class QResultViewer(QtW.QWidget):
         _layout.setAlignment(Qt.AlignmentFlag.AlignTop)
         self.setLayout(_layout)
 
-        self._combobox = ComboBox(
-            choices=_StoredMeta._get_choices_for_combobox
-        )
+        self._combobox = ComboBox(choices=StoredMeta._get_choices_for_combobox)
         self._combobox.native.setFont(monospace_font())
         self._stack_widget = QtW.QStackedWidget()
         _layout.addWidget(self._combobox.native)
