@@ -5,6 +5,8 @@ from qtpy.QtCore import Qt
 
 
 class QComboBoxModel(QtGui.QStandardItemModel):
+    """This model enables multi-line text for ComboBox."""
+
     def data(
         self,
         index: QtCore.QModelIndex,

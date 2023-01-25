@@ -54,8 +54,12 @@ class QResultStack(QtW.QWidget):
         self._inner_layout.addWidget(frame)
         return None
 
-    def on_overflown(self) -> None:
-        self._inner_layout.removeWidget(self._inner_layout.itemAt(0).widget())
+    def on_variable_popped(self, index: int) -> None:
+        if index < 0:
+            index += self._inner_layout.count()
+        self._inner_layout.removeWidget(
+            self._inner_layout.itemAt(index).widget()
+        )
         return None
 
     def widget(self, index: int) -> QtW.QWidget:
@@ -86,7 +90,7 @@ class QResultStackItem(QtW.QGroupBox):
 
         label = f"{_s}({label}){_s * 2}"
         label_text = (
-            f"{_colored(label, 'gray')}{_colored(typ.__name__, 'lime')}"
+            f"{_styled(label, 'gray', 'Arial')}{_styled(typ.__name__, 'lime')}"
         )
 
         self._label = _label_widget(label_text, self)
@@ -114,5 +118,5 @@ def _label_widget(text: str, parent: QtW.QWidget) -> QtW.QLabel:
     return wdt
 
 
-def _colored(text: str, color: str):
-    return f"<font color={color!r} family='monospace'>{text}</font>"
+def _styled(text: str, color: str, family="monospace"):
+    return f"<font color={color!r} family={family!r}>{text}</font>"

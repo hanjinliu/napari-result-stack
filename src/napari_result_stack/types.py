@@ -3,15 +3,7 @@ from __future__ import annotations
 import typing
 import weakref
 from collections import defaultdict
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Generic,
-    Hashable,
-    TypeVar,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Generic, Hashable, TypeVar, overload
 
 from magicgui.widgets import ComboBox, LineEdit, Widget
 from typing_extensions import Annotated, get_args, get_origin
@@ -98,6 +90,71 @@ class _StoredLast(Generic[_T], metaclass=_StoredLastAlias):
         raise TypeError(f"Cannot subclass {cls.__module__}.StoredLast.")
 
 
+class _StoredValueViewProvider(Generic[_T]):
+    def __getitem__(self, key: _T) -> _StoredValueView[_T]:
+        return _StoredValueView(key)
+
+
+class _ResultStackProvider(Generic[_T]):
+    def __getitem__(self, key: _T) -> QResultStack:
+        return Stored._class_getitem(key)._widget()
+
+
+class _AbstractView(Generic[_T]):
+    def __init__(self, key):
+        self._key = key
+
+    def _get_cls(self) -> _StoredMeta[_T]:
+        return Stored._class_getitem(self._key)
+
+
+class _StoredValueView(_AbstractView[_T]):
+    def __getitem__(self, index: int):
+        for label, value in self._get_cls()._store:
+            if label == index:
+                return value
+        raise KeyError(f"{index!r}")
+
+    def __repr__(self) -> str:
+        clsname = type(self).__name__
+        items = ", ".join(
+            f"{label!r}: {value!r}" for label, value in self._get_cls()._store
+        )
+        return f"{clsname}[{self._get_cls()}]({{{items}}})"
+
+    def append(self, value: _T):
+        """Append the value to the storage."""
+        return self._get_cls().append(value)
+
+    def pop(self, index: int = -1) -> _T:
+        """Pop the item at given index from the storage."""
+        return self._get_cls().pop(index)
+
+    @property
+    def maxsize(self) -> int:
+        """Return the maximum size of the storage."""
+        return self._get_cls()._maxsize
+
+    @maxsize.setter
+    def maxsize(self, size: int):
+        """Set the maximum size of the storage."""
+        if not isinstance(size, int) or size <= 0:
+            raise ValueError(f"Size must be a positive integer, got {size!r}.")
+        stored_cls = self._get_cls()
+        widget = stored_cls._widget()
+        stored_cls._maxsize = size
+        n_overflow = len(stored_cls) - size
+        if n_overflow <= 0:
+            return
+        for _ in range(n_overflow):
+            stored_cls._store.pop(0)
+            if widget is not None:
+                widget.on_variable_popped(0)
+
+    def __len__(self) -> int:
+        return len(self._get_cls()._store)
+
+
 class _StoredMeta(type, Generic[_T]):
     _instances: dict[Hashable, _StoredMeta] = {}
     _bound_widgets: defaultdict[Hashable, list[Widget]] = defaultdict(list)
@@ -109,13 +166,14 @@ class _StoredMeta(type, Generic[_T]):
     _hash_value: Hashable
     __args__: tuple[type]
 
+    # NOTE: These overloaded functions are NOT correct. They deceive the type
+    # checkers and make `Stored[T]` behave as if it is `T`.
+    # fmt: off
     @overload
-    def __getitem__(cls, value: type[_U]) -> type[_U]:
-        ...
-
+    def __getitem__(cls, value: type[_U]) -> type[_U]: ...
     @overload
-    def __getitem__(cls, value: tuple[type[_U], Hashable]) -> type[_U]:
-        ...
+    def __getitem__(cls, value: tuple[type[_U], Hashable]) -> type[_U]: ...
+    # fmt: on
 
     def __getitem__(cls, value):
         return Stored._class_getitem(value)
@@ -133,7 +191,11 @@ class _StoredMeta(type, Generic[_T]):
 
     def pop(cls, index: int = -1) -> StoredValue[_T]:
         """Pop the item at given index from the storage."""
-        return cls._store.pop(index)
+        out = cls._store.pop(index)
+        widget = cls._widget()
+        if widget is not None:
+            widget.on_variable_popped(index)
+        return out
 
     def append(cls, value: _T):
         """Append the value to the storage."""
@@ -145,17 +207,11 @@ class _StoredMeta(type, Generic[_T]):
         cls._count += 1
         if len(cls._store) > cls._maxsize:
             cls._store.pop(0)
-            if widget is not None:
-                widget.on_overflown()
 
         # reset all the related categorical widgets.
         for w in _StoredMeta._bound_widgets.get(cls._hash_key(), []):
             w.reset_choices()
         return None
-
-    def value(cls, index: int = -1) -> _T:
-        """Get the value at given index from the storage."""
-        return cls._store[index].value
 
     def get_widget(cls) -> QResultStack:
         """Get the widget for this storage type. Create if not exists."""
@@ -209,52 +265,13 @@ class Stored(Generic[_T], metaclass=_StoredMeta):
     _maxsize: int
     _hash_value: Hashable
     _widget_ref: weakref.ReferenceType[QResultStack]
-    Last = _StoredLast
+
+    Lastof = _StoredLast
+    valuesof = _StoredValueViewProvider()
+    widgetof = _ResultStackProvider()
     _no_spec = DefaultSpec()
 
     __args__: tuple[type] = ()
-    _repr_map: dict[type[_U], Callable[[_U], str]] = {}
-
-    @classmethod
-    def new(cls, tp: type[_U], maxsize: int | None = None) -> Stored[_U]:
-        """Create a new storage with given maximum size."""
-        i = 0
-        while (tp, i) in _StoredMeta._instances:
-            i += 1
-        outtype = Stored[tp, 0]
-        if maxsize is None:
-            maxsize = _maxsize_for_type(tp)
-        else:
-            if not isinstance(maxsize, int) or maxsize <= 0:
-                raise TypeError("maxsize must be a positive integer")
-            outtype._maxsize = maxsize
-        return outtype
-
-    @overload
-    @classmethod
-    def register_repr(
-        cls, tp: type[_U], func: Callable[[_U], str]
-    ) -> Callable[[_U], str]:
-        ...
-
-    @overload
-    @classmethod
-    def register_repr(
-        cls, tp: type[_U]
-    ) -> Callable[[Callable[[_U], str]], Callable[[_U], str]]:
-        ...
-
-    @classmethod
-    def register_repr(cls, tp, func=None):
-        """Register a function to convert a value to string."""
-
-        def wrapper(f):
-            if not callable(f):
-                raise TypeError("func must be a callable")
-            cls._repr_map[tp] = f
-            return f
-
-        return wrapper(func) if func is not None else wrapper
 
     @classmethod
     def _get_choice(cls, w: Widget):
@@ -358,9 +375,17 @@ class StoredValue(Generic[_T]):
         self.label = label
         self.value = value
 
+    def __repr__(self) -> str:
+        return f"StoredValue(label={self.label!r}, value={self.value!r})"
+
     def fmt(self) -> str:
         typ = type(self.value).__name__
         return f"({self.label}) {typ}\n{_repr_like(self.value)}"
+
+    def __iter__(self):
+        """Tuple-like unpacking."""
+        yield self.label
+        yield self.value
 
 
 def _repr_like(x: Any):
