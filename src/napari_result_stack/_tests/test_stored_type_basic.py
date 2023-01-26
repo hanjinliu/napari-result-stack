@@ -92,11 +92,15 @@ def test_get_method(stored: StoredMeta):
     assert 0 == stored.valuesof[str].get(5, 0)
     with pytest.raises(KeyError):
         stored.valuesof[str].get(5)
+    with pytest.raises(TypeError):
+        stored.valuesof[str].get("a")
 
 
 def test_overflow(stored: StoredMeta):
     stored[str]
     stored.valuesof[str].maxsize = 3
+    with pytest.raises(ValueError):
+        stored.valuesof[str].maxsize = 0
     assert stored.valuesof[str].maxsize == 3
     stored.valuesof[str].append("a")
     stored.valuesof[str].append("b")
@@ -129,6 +133,8 @@ def test_last(stored: StoredMeta):
     def g(s: stored.Lastof[str]):
         pass
 
+    with pytest.raises(IndexError):
+        g.s.value
     f("a")
     assert g.s.value == "a"
     f("b")

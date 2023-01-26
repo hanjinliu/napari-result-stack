@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from magicgui.widgets import ComboBox
 from qtpy import QtGui
 from qtpy import QtWidgets as QtW
@@ -8,6 +10,9 @@ from qtpy.QtCore import Qt
 from napari_result_stack._qt_const import monospace_font
 from napari_result_stack.types import StoredMeta
 
+if TYPE_CHECKING:
+    from napari_result_stack.widgets import QResultStack
+
 
 class QResultViewer(QtW.QWidget):
     _current_instance: QResultViewer | None = None
@@ -15,8 +20,7 @@ class QResultViewer(QtW.QWidget):
     def __init__(self, parent: QtW.QWidget | None = None):
         super().__init__(parent)
         self._setup_ui()
-        self._widget = None
-        # self._combobox.reset_choices()
+        self._widget: QResultStack | None = None
         if (stored := self._combobox.value) is not None:
             self._on_combobox_changed(stored)
 
@@ -33,7 +37,7 @@ class QResultViewer(QtW.QWidget):
         # this will be call every time layer is updated.
         self._combobox.reset_choices()
 
-    def setWidget(self, wdt: QtW.QWidget):
+    def setWidget(self, wdt: QResultStack):
         """Set the widget to be shown below the combo box."""
         if self._widget is not None:
             self._layout.removeWidget(self._widget)
@@ -51,7 +55,6 @@ class QResultViewer(QtW.QWidget):
 
         self._combobox = ComboBox(choices=StoredMeta._get_choices_for_combobox)
         self._combobox.native.setFont(monospace_font())
-        self._stack_widget = QtW.QStackedWidget()
         _layout.addWidget(self._combobox.native)
         self._combobox.changed.connect(self._on_combobox_changed)
 
