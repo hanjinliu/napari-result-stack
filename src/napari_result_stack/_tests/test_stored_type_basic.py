@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Sequence, Tuple
+from unittest.mock import MagicMock
 
 import pytest
 from magicgui import magicgui
@@ -145,7 +146,7 @@ def test_last(stored: StoredMeta):
 
 
 def test_repr(stored: StoredMeta):
-    stored[str]
+    repr(stored[str])
     repr(stored.valuesof[str])
     repr(stored.widgetof[str])
 
@@ -194,3 +195,39 @@ def test_type_names(tp, stored: StoredMeta):
     f()
     str(stored[tp])
     repr(stored[tp])
+
+
+def test_instantiate_error(stored: StoredMeta):
+    with pytest.raises(TypeError):
+        stored()
+    with pytest.raises(TypeError):
+        stored[int]()
+    with pytest.raises(TypeError):
+        stored.Lastof()
+    with pytest.raises(TypeError):
+        stored.Lastof[int]()
+    with pytest.raises(TypeError):
+        stored[int][int]
+    with pytest.raises(TypeError):
+        stored[int, 0, 0]
+    with pytest.raises(TypeError):
+        stored[0]
+
+
+def test_return_callback_of_inner_type(stored: StoredMeta):
+    class T:
+        pass
+
+    from magicgui import register_type
+
+    mock = MagicMock()
+
+    register_type(T, return_callback=mock)
+
+    @magicgui
+    def f() -> stored[T]:
+        pass
+
+    mock.assert_not_called()
+    f()
+    mock.assert_called()

@@ -172,6 +172,10 @@ class _StoredValueView(_AbstractView[_T]):
             if widget is not None:
                 widget.on_variable_popped(0)
 
+    def clear(self):
+        """Clear the storage."""
+        return self._get_cls().clear()
+
     def __len__(self) -> int:
         """Number of stored values."""
         return len(self._get_cls()._store)
@@ -210,10 +214,6 @@ class StoredMeta(type, Generic[_T]):
 
     def __repr__(cls: StoredMeta) -> str:
         return cls.__name__
-
-    def length(self) -> int:
-        """The number of the storage."""
-        return len(self._store)
 
     def clear(cls):
         """Clear the storage."""
@@ -306,6 +306,9 @@ class Stored(Generic[_T], metaclass=StoredMeta):
     _no_spec = DefaultSpec()
 
     __args__: tuple[type] = ()
+
+    def __new__(cls, *args, **kwargs):
+        raise TypeError("Cannot instantiate Stored.")
 
     @classmethod
     def _get_choice(cls, w: Widget):

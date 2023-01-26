@@ -107,13 +107,12 @@ class QResultStackItem(QtW.QGroupBox):
     def _on_button_clicked(self):
         """Pop this item from the QResultStackWidget and storage."""
         parent = self._parent_stack()
-        if parent is None:
-            return
-        for i, st in enumerate(parent._origin_stored_type._store):
-            if st.label == self._label_number:
-                parent._origin_stored_type.pop(i)
-                return
-        raise RuntimeError("Unreachable")
+        if parent is not None:
+            for i, st in enumerate(parent._origin_stored_type._store):
+                if st.label == self._label_number:
+                    parent._origin_stored_type.pop(i)
+                    return
+        raise RuntimeError("Unreachable")  # pragma: no cover
 
 
 def _label_widget(text: str, parent: QtW.QWidget) -> QtW.QLabel:
