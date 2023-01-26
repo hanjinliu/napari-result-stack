@@ -6,6 +6,7 @@ from collections import defaultdict
 from typing import (
     TYPE_CHECKING,
     Any,
+    Callable,
     Generic,
     Hashable,
     Iterator,
@@ -389,10 +390,10 @@ def _maxsize_for_type(tp: type[_T]) -> int:
         return 60
 
 
-def _type_name(tp) -> str:
+def _type_name(tp, default: Callable[[Any], str] | None = None) -> str:
     if origin := get_origin(tp):
         origin_name = _type_name(origin)
-        args = ", ".join(map(_type_name, get_args(tp)))
+        args = ", ".join(map(lambda x: _type_name(x, repr), get_args(tp)))
         return f"{origin_name}[{args}]"
     elif hasattr(tp, "__name__"):
         return tp.__name__
@@ -401,7 +402,11 @@ def _type_name(tp) -> str:
     elif tp in (..., None, NotImplemented):
         return str(tp)
     else:
-        raise TypeError(f"Cannot get type name for {tp}")
+        if default is None:
+            raise TypeError(
+                f"Cannot get type name for {tp} (type: {type(tp)})"
+            )
+        return default(tp)
 
 
 class StoredValue(Generic[_T]):

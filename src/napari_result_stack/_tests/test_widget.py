@@ -88,7 +88,7 @@ class MyList(list):
         {"a": 3, "b": [1, 2]},
         [1, 2],
         MyList([1, 2, 3]),
-        pd.DataFrame({"a": [1, 2], "b": [3, 4]}),
+        pd.DataFrame({"a": [1, 2], "b": [3.2, 0.4], "c": [1 + 1j, 2.2 - 1j]}),
         pd.Series([1, 2, 4]),
         _func,
     ],

@@ -1,5 +1,8 @@
+from typing import Any, Callable, Dict, Sequence, Tuple
+
 import pytest
 from magicgui import magicgui
+from typing_extensions import Annotated
 
 from napari_result_stack.types import StoredMeta
 
@@ -166,3 +169,29 @@ def test_magicgui_construction(stored: StoredMeta):
     provide()
     receive()
     receive_last()
+
+
+@pytest.mark.parametrize(
+    "tp",
+    [
+        complex,
+        type,
+        tuple,
+        Tuple[int, str],
+        Dict[str, Any],
+        Callable,
+        Callable[..., int],
+        Callable[[int, str], int],
+        Annotated[int, "metadata"],  # NOTE: metadata must be hashable
+        Sequence,
+        Sequence[str],
+    ],
+)
+def test_type_names(tp, stored: StoredMeta):
+    @magicgui
+    def f() -> stored[tp]:
+        return 0
+
+    f()
+    str(stored[tp])
+    repr(stored[tp])
