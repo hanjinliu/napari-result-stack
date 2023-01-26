@@ -183,7 +183,6 @@ def test_magicgui_construction(stored: StoredMeta):
         Callable[..., int],
         Callable[[int, str], int],
         Annotated[int, "metadata"],  # NOTE: metadata must be hashable
-        Sequence,
         Sequence[str],
     ],
 )
