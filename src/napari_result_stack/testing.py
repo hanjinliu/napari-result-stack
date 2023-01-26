@@ -1,26 +1,20 @@
-import pytest
+from contextlib import contextmanager
 
 from napari_result_stack.types import Stored, StoredMeta
 
 
-@pytest.fixture
-def stored():
+@contextmanager
+def temp_storage():
     """
-    Provide a ``Stored`` type and cleanup the instance list after the test.
+    Provide a Stored type and cleanup the instance list outside the context.
 
-    Following two tests both use ``Stored[int]`` but the second one will not
-    be contaminated with the variables defined in the first one.
+    In the following example, storage will be safely removed.
 
-    >>> def test_something_1(stored):
-    ...     @magicgui
-    ...     def func1(): -> stored[int]:
-    ...         ...
-
-    >>> def test_something_2(stored):
-    ...     @magicgui
-    ...     def func2(): -> stored[int]:
-    ...         ...
-
+    >>> def test_something():
+    ...     with temp_storage():
+    ...         @magicgui
+    ...         def func1(): -> stored[int]:
+    ...             ...
     """
 
     class _DummpyStorage(Stored):
