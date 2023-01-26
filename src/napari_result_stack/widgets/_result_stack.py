@@ -63,7 +63,7 @@ class QResultStack(QtW.QWidget):
         )
         return None
 
-    def widget(self, index: int) -> QtW.QWidget:
+    def widget(self, index: int) -> QResultStackItem:
         """Return the widget at the given index"""
         return self._inner_layout.itemAt(index).widget()
 
@@ -98,6 +98,7 @@ class QResultStackItem(QtW.QGroupBox):
 
         _btn = _close_button(self._on_button_clicked, 16)
 
+        self._close_button = _btn
         _layout.addWidget(_h_container(_label_wdt, _btn))
         _layout.addWidget(widget)
 
