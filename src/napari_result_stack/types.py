@@ -280,8 +280,7 @@ _U = TypeVar("_U")
 
 
 class DefaultSpec:
-    def __repr__(self) -> str:
-        return "<default>"
+    """The unique hashable object."""
 
     def __hash__(self) -> int:
         return id(self)
@@ -382,7 +381,7 @@ class Stored(Generic[_T], metaclass=StoredMeta):
 
 def _is_type_like(x: Any):
     _tp = (type, typing._GenericAlias)  # noqa
-    return isinstance(x, _tp) or hasattr(x, "__subclasshook__")
+    return isinstance(x, _tp) or hasattr(x, "__subclasscheck__")
 
 
 def _maxsize_for_type(tp: type[_T]) -> int:

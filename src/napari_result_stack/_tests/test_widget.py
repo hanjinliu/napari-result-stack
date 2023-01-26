@@ -90,6 +90,25 @@ def test_popped(qtbot: QtBot, stored: StoredMeta):
     assert stored.valuesof[int][1] == 2
 
 
+def test_maxsize_changed(qtbot: QtBot, stored: StoredMeta):
+    wdt = QResultViewer()
+    qtbot.addWidget(wdt)
+
+    @magicgui
+    def f(x: int) -> stored[int]:
+        return x
+
+    f(0)
+    f(1)
+    f(2)
+    assert wdt._widget.count() == 3
+    stored.valuesof[int].maxsize = 2
+    assert list(stored.valuesof[int]) == [1, 2]
+    assert wdt._widget.count() == 2
+    assert stored.valuesof[int][0] == 1
+    assert stored.valuesof[int][1] == 2
+
+
 def _func(x, y):
     """Some description."""
     out = x + y
@@ -135,7 +154,7 @@ def test_popup(qtbot: QtBot, stored: StoredMeta):
         return x
 
 
-def test_magicgui_construction(stored: StoredMeta):
+def test_magicgui_construction(qtbot: QtBot, stored: StoredMeta):
     @magicgui
     def provide() -> stored[int]:
         return 0
@@ -146,6 +165,7 @@ def test_magicgui_construction(stored: StoredMeta):
 
     provide.show()
     receive.show()
+    qtbot.addWidget(receive.native)
     provide()
     receive()
     cbox: QComboBox = receive.x.native

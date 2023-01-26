@@ -83,6 +83,8 @@ def test_list_like_methods(stored: StoredMeta):
     assert list(stored.valuesof[str]) == ["a", "b", "c"]
     stored.valuesof[str].pop(1)
     assert list(stored.valuesof[str]) == ["a", "c"]
+    stored.valuesof[str].clear()
+    assert list(stored.valuesof[str]) == []
 
 
 def test_get_method(stored: StoredMeta):
