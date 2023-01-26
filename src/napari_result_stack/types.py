@@ -121,7 +121,7 @@ class _AbstractView(Generic[_T]):
 
 class _StoredValueView(_AbstractView[_T]):
     def __getitem__(self, index: SupportsIndex):
-        return self._get_cls()._store[index]
+        return self._get_cls()._store[index].value
 
     def __repr__(self) -> str:
         clsname = type(self).__name__
