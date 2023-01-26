@@ -18,7 +18,7 @@ from typing import (
 from magicgui.widgets import ComboBox, LineEdit, Widget
 from typing_extensions import Annotated, get_args, get_origin
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from magicgui.widgets import FunctionGui
     from qtpy.QtWidgets import QComboBox
 
@@ -71,13 +71,12 @@ class StoredValueComboBox(ComboBox):
 
 
 class _StoredLastAlias(type):
+    # fmt: off
     @overload
-    def __getitem__(cls, value: type[_T]) -> type[_T]:
-        ...
-
+    def __getitem__(cls, value: type[_T]) -> type[_T]: ...  # pragma: no cover  # noqa
     @overload
-    def __getitem__(cls, value: tuple[type[_T], Hashable]) -> type[_T]:
-        ...
+    def __getitem__(cls, value: tuple[type[_T], Hashable]) -> type[_T]: ...  # pragma: no cover  # noqa
+    # fmt: on
 
     def __getitem__(cls, value):
         stored_cls = Stored._class_getitem(value)
@@ -201,9 +200,9 @@ class StoredMeta(type, Generic[_T]):
     # checkers and make `Stored[T]` behave as if it is `T`.
     # fmt: off
     @overload
-    def __getitem__(cls, value: type[_U]) -> type[_U]: ...
+    def __getitem__(cls, value: type[_U]) -> type[_U]: ...  # pragma: no cover  # noqa
     @overload
-    def __getitem__(cls, value: tuple[type[_U], Hashable]) -> type[_U]: ...
+    def __getitem__(cls, value: tuple[type[_U], Hashable]) -> type[_U]: ...  # pragma: no cover  # noqa
     # fmt: on
 
     def __getitem__(cls, value):

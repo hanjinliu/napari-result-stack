@@ -5,12 +5,9 @@ import inspect
 from enum import Enum
 from pathlib import Path
 from types import FunctionType
-from typing import TYPE_CHECKING, Mapping
+from typing import Mapping
 
 from ._factory import WidgetFactoryMap
-
-if TYPE_CHECKING:
-    pass
 
 
 def _enum_repr(x: Enum):

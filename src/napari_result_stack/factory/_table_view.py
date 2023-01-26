@@ -6,7 +6,7 @@ from qtpy import QtCore
 from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     import numpy as np
     import pandas as pd
     import polars as pl
@@ -146,7 +146,7 @@ class QDataFrameView(QtW.QTableView):
         self.setVerticalScrollMode(_per_pixel)
         self.setHorizontalScrollMode(_per_pixel)
 
-    if TYPE_CHECKING:
+    if TYPE_CHECKING:  # pragma: no cover
 
         def model(self) -> QDataFrameModel:
             ...

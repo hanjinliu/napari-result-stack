@@ -10,7 +10,7 @@ from qtpy.QtCore import Qt
 from napari_result_stack._qt_const import monospace_font
 from napari_result_stack.types import StoredMeta
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from napari_result_stack.widgets import QResultStack
 
 

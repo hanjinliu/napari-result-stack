@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from napari_result_stack.types import StoredMeta
 
 

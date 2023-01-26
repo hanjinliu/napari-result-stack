@@ -46,17 +46,17 @@ class WidgetFactoryMap(MutableMapping[type, _WidgetFactory]):
     def register(
         self, typ: type[_T]
     ) -> Callable[[_WidgetFactory[_T]], _WidgetFactory[_T]]:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def register(self, func: _WidgetFactory[_T]) -> _WidgetFactory[_T]:
-        ...
+        ...  # pragma: no cover
 
     @overload
     def register(
         self, typ: type[_T], func: _WidgetFactory[_T]
     ) -> _WidgetFactory[_T]:
-        ...
+        ...  # pragma: no cover
 
     def register(self, *args) -> _WidgetFactory:
         nargs = len(args)
