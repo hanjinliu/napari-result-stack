@@ -31,6 +31,8 @@ def print_data(df: Stored[pd.DataFrame]):
     print(df)
 ```
 
+![](images/demo-0.gif)
+
 - Different types use different storage. e.g. `Stored[int]` and `Stored[str]` do not share the same place.
 - Even for the same type, you can specify the second key to split the storage. e.g. `Stored[int]`, `Stored[int, 0]` and `Stored[int, "my-plugin-name"]` use the distinct storages.
 
@@ -55,7 +57,7 @@ def _record_now():
 
 `napari-result-stack` provides a plugin widget that is helpful to inspect all the stored values.
 
-![](images/demo.gif)
+![](images/demo-1.gif)
 
 
 <details><summary>Show code</summary><div>

@@ -7,6 +7,5 @@ def register_all():
     register_type(
         Stored,
         widget_type=StoredValueComboBox,
-        # choices=Stored._get_choice,
         return_callback=Stored._store_value,
     )
