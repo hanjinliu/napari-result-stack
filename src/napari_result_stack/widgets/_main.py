@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+import napari
 from magicgui.widgets import ComboBox
 from qtpy import QtGui
 from qtpy import QtWidgets as QtW
@@ -72,3 +73,10 @@ class QResultViewer(QtW.QWidget):
         _header.setLayout(_header_layout)
 
         _layout.addWidget(_header)
+
+
+def create_dock_widget():
+    """Easy way to create a dock widget for napari"""
+    wdt = QResultViewer()
+    viewer = napari.current_viewer()
+    return viewer.window.add_dock_widget(wdt, area="right")
