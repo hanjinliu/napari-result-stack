@@ -124,6 +124,7 @@ class MyList(list):
     [
         0,
         "a",
+        "text\nof\nmultiple\nlines",
         {"a": 3, "b": [1, 2]},
         [1, 2],
         MyList([1, 2, 3]),
@@ -170,3 +171,19 @@ def test_magicgui_construction(qtbot: QtBot, stored: StoredMeta):
     receive()
     cbox: QComboBox = receive.x.native
     cbox.showPopup()
+
+
+def test_dataframe_view_copy(qtbot: QtBot):
+    from qtpy.QtCore import Qt
+
+    from napari_result_stack.factory._table_view import QDataFrameView
+
+    df = pd.DataFrame({"a": [1, 2, 3], "b": [2.1, 3.2, 4.3]})
+    view = QDataFrameView(df)
+    qtbot.addWidget(view)
+    qtbot.keyClick(
+        view, Qt.Key.Key_A, modifier=Qt.KeyboardModifier.ControlModifier
+    )
+    qtbot.keyClick(
+        view, Qt.Key.Key_C, modifier=Qt.KeyboardModifier.ControlModifier
+    )

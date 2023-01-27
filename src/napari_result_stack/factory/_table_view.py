@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Callable, Union
 
-from qtpy import QtCore
+from qtpy import QtCore, QtGui
 from qtpy import QtWidgets as QtW
 from qtpy.QtCore import Qt
 
@@ -135,7 +135,6 @@ def _format_value(val, dtype: np.dtype):
     return _DEFAULT_FORMATTERS.get(dtype.kind, str)(val)
 
 
-# TODO: copy
 class QDataFrameView(QtW.QTableView):
     def __init__(self, df: _DataFrame) -> None:
         super().__init__()
@@ -145,6 +144,25 @@ class QDataFrameView(QtW.QTableView):
         _per_pixel = QtW.QAbstractItemView.ScrollMode.ScrollPerPixel
         self.setVerticalScrollMode(_per_pixel)
         self.setHorizontalScrollMode(_per_pixel)
+
+    def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:
+        if e.matches(QtGui.QKeySequence.StandardKey.Copy):
+            return self.copy_data()
+        return super().keyPressEvent(e)
+
+    def copy_data(self):
+        model = self.selectionModel()
+        if not model.hasSelection():
+            return
+        indexes = model.selectedIndexes()
+        start = indexes[0]
+        stop = indexes[-1]
+        rstart = start.row()
+        rstop = stop.row() + 1
+        cstart = start.column()
+        cstop = stop.column() + 1
+        df_sub = self.model().df.iloc[rstart:rstop, cstart:cstop]
+        df_sub.to_clipboard()
 
     if TYPE_CHECKING:  # pragma: no cover
 
