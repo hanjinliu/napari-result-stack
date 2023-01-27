@@ -28,10 +28,16 @@ def register_factories(wfactory: WidgetFactoryMap) -> None:
 
     _default = WidgetFactoryMap.default_factory
 
+    def _str_widget_factory(x: str):
+        if "\n" in x:
+            return QTextView(x)
+        else:
+            return WidgetFactoryMap.default_factory(x)
+
     wfactory.register(int, _default)
     wfactory.register(bool, _default)
     wfactory.register(float, _default)
-    wfactory.register(str, _default)
+    wfactory.register(str, _str_widget_factory)
     wfactory.register(Enum, lambda x: _default(x, _enum_repr))
     wfactory.register(Path, lambda x: _default(x, _path_repr))
     wfactory.register(datetime.datetime, lambda x: _default(x, str))
